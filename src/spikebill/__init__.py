@@ -1,6 +1,6 @@
 """spikebill: chip-level energy and latency of spiking neural networks on neuromorphic hardware."""
 
-__version__ = "0.1.0.dev0"
+__version__ = "0.1.0"
 
 from .api import Simulator  # noqa: E402,F401
 from .build import NetBuilder  # noqa: E402,F401
