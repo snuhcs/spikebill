@@ -249,6 +249,7 @@ def large_55m(workers, models=None):
     fo = cost.first_order(g, chip())
     out.update({"large.sdt_v2_55m.first_order_chips": fo["chips"], "large.sdt_v2_55m.first_order_J": fo["energy_J"],
                 "large.sdt_v2_55m.full_over_first": v["energy_J"] / fo["energy_J"]})
+    out["large.sdt_v2_55m.chips_over_first"] = v["chips"] / fo["chips"]
     rf = rep.roofline()             # per-core / per-link roofline on the same mapping (E19(b) addendum)
     out.update({"large.sdt_v2_55m.roofline_J": rf["energy_J"], "large.sdt_v2_55m.roofline_ms": rf["latency_s"] * 1e3,
                 "large.sdt_v2_55m.roofline_latency_x": rf["full_latency_s"] / rf["latency_s"],

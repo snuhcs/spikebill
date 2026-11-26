@@ -24,7 +24,7 @@ def test_example_runs(script, tmp_path):
 
 
 def test_reproduce_paper_subset(tmp_path):
-    """examples/reproduce_paper.py: one model's Table-transformers numbers match the paper (full run: ~3 min, 111 numbers)."""
+    """examples/reproduce_paper.py: one model's Table-transformers numbers match the paper (full run: ~3 min, 112 numbers)."""
     env = dict(os.environ, PYTHONPATH=os.path.join(ROOT, "src"))
     out = tmp_path / "rep.json"
     r = subprocess.run([sys.executable, os.path.join(EX, "reproduce_paper.py"), "--only", "table.sdt_v1_8_512",

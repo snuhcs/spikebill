@@ -636,6 +636,12 @@
    "where": "Sec. 5 'Meta-SpikeFormer 55M' (and Table multichip)"
   },
   {
+   "id": "large.sdt_v2_55m.chips_over_first",
+   "paper": "16",
+   "eid": "E19(b)",
+   "where": "Sec. 5 'Meta-SpikeFormer 55M' (16x chips vs first-order)"
+  },
+  {
    "id": "large.sdt_v2_55m.roofline_J",
    "paper": "1.65",
    "eid": "E19(b) addendum roofline",

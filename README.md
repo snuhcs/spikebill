@@ -209,7 +209,7 @@ The estimates are checked against simulators; no Loihi 2 or multi-chip measureme
   which.
 
 `spikebill-validate` reruns these checks against their pre-registered pass criteria.
-`python examples/reproduce_paper.py` recomputes 111 numbers of the white paper and compares each with the printed
+`python examples/reproduce_paper.py` recomputes 112 numbers of the white paper and compares each with the printed
 value (about 3 minutes).
 
 ## Documentation
