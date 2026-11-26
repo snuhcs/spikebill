@@ -1,0 +1,35 @@
+# Template for a new chip: copy to src/spikebill/chips/<name>.yaml (or any path), replace every value,
+# give each parameter a unit, a source tag and, where it is not measured, a low / high range.
+# Check: spikebill --chip <name or path> --describe ; then run a small model and compare with a known number.
+name: my_chip
+version: "0.1"   # bump when any value changes
+topology: {tiles_x: 4, tiles_y: 4, cores_per_tile: 1}   # add tiles_z: N (and t_vhop, t_vlink, e_vhop) for stacked dies
+# barrier_table: {1: 0.5e-6, 4: 1.0e-6}   # optional: barrier time by number of used tiles
+# core_timing: max      # max (neuron and message pipelines overlap) | sum
+# multicast: none       # none (unicast copies) | tree
+# static_accounting: chip   # chip | cores | none
+params:
+  max_neurons:      {value: 100,  source: "TODO"}
+  syn_mem_bits:     {value: 80000, source: "TODO"}
+  max_fanin_axons:  {value: 1000, source: "TODO"}
+  max_fanout_axons: {value: 1000, source: "TODO"}
+  e_synop:          {value: 1.0e-12, low: 0.5e-12, high: 2.0e-12, unit: J, source: "TODO"}
+  e_neuron_update:  {value: 1.0e-12, unit: J, source: "TODO"}
+  e_neuron_active:  {value: 1.0e-12, unit: J, source: "TODO"}
+  e_spike_gen:      {value: 1.0e-12, unit: J, source: "TODO"}
+  e_spike_out:      {value: 1.0e-12, unit: J, source: "TODO"}
+  e_hop:            {value: 1.0e-12, unit: J, source: "TODO"}
+  e_chip_hop:       {value: 10.0e-12, unit: J, source: "TODO"}
+  t_synop:          {value: 1.0e-9, unit: s, source: "TODO"}
+  t_neuron_update:  {value: 1.0e-9, unit: s, source: "TODO"}
+  t_neuron_active:  {value: 1.0e-9, unit: s, source: "TODO"}
+  t_spike_gen:      {value: 1.0e-9, unit: s, source: "TODO"}
+  t_msg_in:         {value: 1.0e-9, unit: s, source: "TODO"}
+  t_hop:            {value: 1.0e-9, unit: s, source: "TODO"}
+  t_link:           {value: 1.0e-9, unit: s, source: "TODO"}
+  t_chip_hop:       {value: 10.0e-9, unit: s, source: "TODO"}
+  t_barrier:        {value: 1.0e-6, unit: s, source: "TODO"}
+  t_barrier_multichip: {value: 10.0e-6, unit: s, source: "TODO"}
+  t_spike_out:      {value: 1.0e-9, unit: s, source: "TODO"}
+  p_static_core:    {value: 1.0e-3, unit: W, source: "TODO"}
+  p_static_chip:    {value: 10.0e-3, unit: W, source: "TODO"}

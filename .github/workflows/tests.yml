@@ -1,0 +1,34 @@
+# Copied to .github/workflows/ by tools/release/build_release.py.
+name: tests
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  minimal:
+    # core dependencies only: tests that need optional packages (torch, nir, snntorch, matplotlib, sanafe) skip
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false        # one failing version must not cancel the other
+      matrix:
+        python: ["3.10", "3.12"]
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-python@v6
+        with:
+          python-version: ${{ matrix.python }}
+      - run: pip install -e . pytest
+      - run: pytest -q
+  full:
+    # every optional extra (CPU torch), plus one model's white-paper numbers
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-python@v6
+        with:
+          python-version: "3.12"
+      - run: pip install torch --index-url https://download.pytorch.org/whl/cpu
+      - run: pip install -e .[all]
+      - run: pytest -q
+      - run: python examples/reproduce_paper.py --only table.sdt_v1_8_512 --workers 2

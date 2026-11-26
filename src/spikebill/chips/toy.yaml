@@ -1,0 +1,29 @@
+# Toy chip for unit tests only. Round numbers, NOT a real chip; never use in a finding.
+name: toy
+version: "test"   # bump when any value changes; reports cite version + sha256
+topology: {cores_x: 4, cores_y: 4}
+params:
+  max_neurons:      {value: 100,  source: toy}
+  syn_mem_bits:     {value: 80000, source: toy}
+  max_fanin_axons:  {value: 1000, source: toy}
+  max_fanout_axons: {value: 1000, source: toy}
+  e_synop:          {value: 1.0e-12, low: 0.5e-12, high: 2.0e-12, source: toy}
+  e_neuron_update:  {value: 1.0e-12, source: toy}
+  e_neuron_active:  {value: 1.0e-12, source: toy}
+  e_spike_gen:      {value: 1.0e-12, source: toy}
+  e_spike_out:      {value: 1.0e-12, source: toy}
+  e_hop:            {value: 1.0e-12, source: toy}
+  e_chip_hop:       {value: 10.0e-12, source: toy}
+  t_synop:          {value: 1.0e-9, source: toy}
+  t_neuron_update:  {value: 1.0e-9, source: toy}
+  t_neuron_active:  {value: 1.0e-9, source: toy}
+  t_spike_gen:      {value: 1.0e-9, source: toy}
+  t_msg_in:         {value: 1.0e-9, source: toy}
+  t_hop:            {value: 1.0e-9, source: toy}
+  t_link:           {value: 1.0e-9, source: toy}
+  t_chip_hop:       {value: 10.0e-9, source: toy}
+  t_barrier:        {value: 1.0e-6, source: toy}
+  t_barrier_multichip: {value: 10.0e-6, source: toy}
+  t_spike_out:      {value: 1.0e-9, source: toy}
+  p_static_core:    {value: 1.0e-3, source: toy}
+  p_static_chip:    {value: 10.0e-3, source: toy}

@@ -1,0 +1,41 @@
+[build-system]
+requires = ["setuptools>=77"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "spikebill"
+version = "0.1.0"
+description = "SpikeBill: energy, latency and chip count of spiking neural networks on neuromorphic chip systems"
+readme = "README.md"
+requires-python = ">=3.10"     # 3.9 is end-of-life and gone from the GitHub runners
+license = "Apache-2.0"
+license-files = ["LICENSE", "NOTICE"]
+authors = [{name = "Hyunseok Oh"}, {name = "Youngki Lee"}]
+dependencies = ["numpy", "scipy", "pyyaml", "networkx"]    # networkx: place.search's Kernighan-Lin candidates
+
+[project.optional-dependencies]
+torch = ["torch", "nir"]
+nir = ["nir"]
+snntorch = ["snntorch", "nir", "nirtorch", "torch"]
+packet = ["numba"]
+dev = ["pytest", "matplotlib"]
+all = ["nir", "torch", "numba", "snntorch", "nirtorch", "pytest", "matplotlib"]
+
+[project.urls]
+Homepage = "https://github.com/snuhcs/spikebill"
+
+[project.scripts]
+spikebill = "spikebill.cli:entry"
+spikebill-validate = "spikebill.validate:entry"
+
+[tool.setuptools]
+package-dir = {"" = "src"}
+packages = ["spikebill", "spikebill.chips", "spikebill.zoo"]
+
+[tool.setuptools.package-data]
+"spikebill.chips" = ["*.yaml"]
+"spikebill.zoo" = ["*.json"]
+
+[tool.pytest.ini_options]
+pythonpath = ["src"]
+testpaths = ["tests"]

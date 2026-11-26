@@ -1,0 +1,39 @@
+# Intel Loihi 1 (14 nm). Per-parameter sources below; overview in docs/chips.md.
+#   [P] Davies et al. 2018 IEEE Micro, Table 2: pre-silicon, 0.75 V.
+#   [C] SANA-FE arch/loihi.yaml @93926ec8: calibrated against Nahuku boards (Boyle et al. TCAD 2025).
+#   [D] derived here; [A] assumption (not public), wide range.
+# Convention: value = silicon-calibrated [C] where available, low/high spans [P] and [C].
+# Mesh: 8x4 tiles of 4 cores sharing one router (SANA-FE loihi.yaml width 8, height 4).
+name: loihi1
+version: "2026.11.2"   # bump when any value changes; reports cite version + sha256
+topology: {tiles_x: 8, tiles_y: 4, cores_per_tile: 4}
+barrier_table: {1: 0.6e-6, 2: 1.0e-6, 4: 1.4e-6, 29: 1.8e-6}   # [C] SANA-FE latency_sync, keyed by used tiles
+params:
+  max_neurons:      {value: 1024,    source: "[P] Davies18 constraint 1 (Ncx)"}
+  syn_mem_bits:     {value: 1048576, source: "[P] Davies18 constraint 2 (128 KB; before compression)"}
+  max_fanin_axons:  {value: 4096,    source: "[P] Davies18 constraint 4 (Naxin)"}
+  max_fanout_axons: {value: 4096,    source: "[P] Davies18 constraint 3 (Naxout)"}
+  e_synop:          {value: 35.5e-12, low: 23.6e-12, high: 35.5e-12, unit: J, source: "[C] SANA-FE dense synapse; [P] Davies18 T2 23.6 pJ (min)"}
+  e_synop@conv:     {value: 24.0e-12, unit: J, source: "[C] SANA-FE conv synapse"}
+  e_synop@sparse:   {value: 33.6e-12, unit: J, source: "[C] SANA-FE sparse synapse"}
+  t_synop@conv:     {value: 3.1e-9, unit: s, source: "[C] SANA-FE conv synapse"}
+  t_synop@sparse:   {value: 4.7e-9, unit: s, source: "[C] SANA-FE sparse synapse"}
+  e_neuron_update:  {value: 51.2e-12, low: 51.2e-12, high: 52.0e-12, unit: J, source: "[C] SANA-FE soma access, every neuron; [P] Davies18 T2 52 inactive"}
+  e_neuron_active:  {value: 21.6e-12, low: 21.6e-12, high: 29.0e-12, unit: J, source: "[C] SANA-FE soma update; [P] Davies18 81 active - 52 inactive"}
+  e_spike_gen:      {value: 69.3e-12, low: 0.0,      high: 69.3e-12, unit: J, source: "[C] SANA-FE soma spike out; not separate in Davies18"}
+  e_spike_out:      {value: 111.0e-12, low: 1.7e-12, high: 111.0e-12, unit: J, source: "[C] SANA-FE axon out per message; [P] Davies18 T2 within-tile spike 1.7 pJ"}
+  e_hop:            {value: 3.6e-12, low: 3.0e-12, high: 4.2e-12, unit: J, source: "[C] SANA-FE 3.0 E-W / 4.2 N-S, mean; [P] Davies18 3.0/4.0"}
+  e_chip_hop:       {value: 36.0e-12, low: 3.6e-12, high: 360.0e-12, unit: J, source: "[A] not public; 10x on-chip hop, range 1x-100x"}
+  t_synop:          {value: 3.8e-9, low: 3.5e-9, high: 4.7e-9, unit: s, source: "[C] SANA-FE dense 3.8 / sparse 4.7 ns; [P] Davies18 3.5 ns"}
+  t_neuron_update:  {value: 6.0e-9, low: 5.3e-9, high: 6.0e-9, unit: s, source: "[C] SANA-FE soma access 6.0 ns; [P] Davies18 5.3 inactive"}
+  t_neuron_active:  {value: 3.7e-9, low: 3.1e-9, high: 3.7e-9, unit: s, source: "[C] SANA-FE soma update; [P] Davies18 8.4 - 5.3"}
+  t_spike_gen:      {value: 30.0e-9, unit: s, source: "[C] SANA-FE soma spike out"}
+  t_spike_out:      {value: 5.1e-9, low: 2.1e-9, high: 5.1e-9, unit: s, source: "[C] SANA-FE axon out per message; [P] Davies18 within-tile 2.1 ns"}
+  t_msg_in:         {value: 16.0e-9, unit: s, source: "[C] SANA-FE axon in per message"}
+  t_hop:            {value: 5.3e-9, low: 4.1e-9, high: 6.5e-9, unit: s, source: "[P]/[C] 4.1 E-W / 6.5 N-S, mean"}
+  t_link:           {value: 0.29e-9, low: 0.29e-9, high: 5.3e-9, unit: s, source: "[P] Davies18 T2: 3.44 Gspike/s cross-sectional bandwidth per tile -> 1/3.44e9; high = hop latency (E1/E1b/E2 semantics)"}
+  t_chip_hop:       {value: 5.4e-9, low: 5.4e-9, high: 21.6e-9, unit: s, source: "[D] 1/185 Mtransfers/s (Loihi 2 brief fn 3) per transfer; high = 4 transfers/packet [A]"}
+  t_barrier:        {value: 1.8e-6, low: 0.465e-6, high: 1.8e-6, unit: s, source: "[C] SANA-FE latency_sync 29 cores 1.8 us; [P] Davies18 113-465 ns (1-32 tiles)"}
+  t_barrier_multichip: {value: 14.3e-6, low: 1.8e-6, high: 16.2e-6, unit: s, source: "[P] Frady et al. 2020 Sec 5.1: 14.3 us (4x64 chips), 16.2 us (768 chips); low = single chip"}
+  p_static_core:    {value: 0.0, unit: W, source: "static booked per chip; NxSDK pro-rates by used cores (alternative accounting)"}
+  p_static_chip:    {value: 69.5e-3, low: 0.0, high: 69.5e-3, unit: W, source: "[D] Frady 2020 Table 1: 53.4 W / 768 chips; low = dynamic-only accounting (SANA-FE)"}

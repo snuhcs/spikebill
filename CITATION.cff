@@ -1,0 +1,18 @@
+cff-version: 1.2.0
+message: "If you use SpikeBill, please cite it as below. A white paper is in preparation; this entry will point to it once it appears."
+type: software
+title: "SpikeBill: energy, latency and chip count of spiking neural networks on neuromorphic chip systems"
+authors:
+  - family-names: Oh
+    given-names: Hyunseok
+  - family-names: Lee
+    given-names: Youngki
+version: 0.1.0
+date-released: 2026-11-26
+license: Apache-2.0
+repository-code: "https://github.com/snuhcs/spikebill"
+keywords:
+  - spiking neural networks
+  - neuromorphic computing
+  - energy estimation
+  - Loihi

@@ -1,0 +1,10 @@
+SpikeBill
+Copyright 2026 Hyunseok Oh, Youngki Lee and contributors
+
+This product includes chip parameters taken from published sources, each cited in the
+chip files (src/spikebill/chips/*.yaml). Loihi 1 calibrated per-event values are from
+SANA-FE (Boyle et al., IEEE TCAD 2025; https://github.com/SLAM-Lab/SANA-FE, GPL-3.0);
+only the numbers are used, no SANA-FE code is included.
+
+Intel and Loihi are trademarks of Intel Corporation. SpikeBill is an independent project; it is not affiliated
+with or endorsed by Intel, and its Loihi parameters are estimates from published sources, not Intel data.

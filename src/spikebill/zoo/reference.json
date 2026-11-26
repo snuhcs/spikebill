@@ -1,0 +1,222 @@
+{
+ "sdt_v1_8_512": {
+  "settings": {
+   "chip": "loihi2",
+   "multicast": "tree",
+   "static": "chip",
+   "execution": "pipelined",
+   "balance": true,
+   "objective": "edp"
+  },
+  "chip_version": "2026.11.3-e6",
+  "spikebill_version": "0.1.0.dev0",
+  "chip_steps": 69,
+  "value": {
+   "chips": 164,
+   "cores": 20877,
+   "energy_J": 0.3527277064626996,
+   "latency_s": 0.0027617103624,
+   "split": {
+    "synaptic": 0.5256625820329679,
+    "neuron": 0.1513047084122442,
+    "network": 0.02756699145740517,
+    "static": 0.29533181817330245,
+    "coproc": 0.0001338999240802719
+   },
+   "ratio_to_claim": 78.3839347694888
+  },
+  "low": {
+   "chips": 164,
+   "cores": 20877,
+   "energy_J": 0.17089591383939354,
+   "latency_s": 0.0018992103624,
+   "split": {
+    "synaptic": 0.5495267544944343,
+    "neuron": 0.1586278974476956,
+    "network": 0.018319122125959077,
+    "static": 0.27338614403002975,
+    "coproc": 0.0001400819018812158
+   },
+   "ratio_to_claim": 37.97686974208745
+  },
+  "high": {
+   "chips": 164,
+   "cores": 20877,
+   "energy_J": 1.292872778866716,
+   "latency_s": 0.009681864264054638,
+   "split": {
+    "synaptic": 0.22039778219560605,
+    "neuron": 0.06352260104071006,
+    "network": 0.04054739492763388,
+    "static": 0.6754757087416089,
+    "coproc": 5.6513094441173366e-05
+   },
+   "ratio_to_claim": 287.30506197038136
+  }
+ },
+ "sdt_v2_31m": {
+  "settings": {
+   "chip": "loihi2",
+   "multicast": "tree",
+   "static": "chip",
+   "execution": "pipelined",
+   "balance": true,
+   "objective": "edp"
+  },
+  "chip_version": "2026.11.3-e6",
+  "spikebill_version": "0.1.0.dev0",
+  "chip_steps": 99,
+  "value": {
+   "chips": 189,
+   "cores": 24077,
+   "energy_J": 0.9698503839052719,
+   "latency_s": 0.005731168559999996,
+   "split": {
+    "synaptic": 0.6063437466286785,
+    "neuron": 0.11127722391534929,
+    "network": 0.025246772837945217,
+    "static": 0.25687869122659795,
+    "coproc": 0.0002535653914289337
+   },
+   "ratio_to_claim": 29.568609265404632
+  },
+  "low": {
+   "chips": 189,
+   "cores": 24077,
+   "energy_J": 0.4878731353915838,
+   "latency_s": 0.004479887759999996,
+   "split": {
+    "synaptic": 0.6105069641628614,
+    "neuron": 0.11236133147001337,
+    "network": 0.01655282382755875,
+    "static": 0.2603234504684531,
+    "coproc": 0.0002554300711132585
+   },
+   "ratio_to_claim": 14.874180957060483
+  },
+  "high": {
+   "chips": 189,
+   "cores": 24077,
+   "energy_J": 3.32109413043457,
+   "latency_s": 0.020422270689365314,
+   "split": {
+    "synaptic": 0.2721189791747687,
+    "neuron": 0.05000488972269089,
+    "network": 0.03854446933924457,
+    "static": 0.6392155581214257,
+    "coproc": 0.00011610364187021743
+   },
+   "ratio_to_claim": 101.25286983032225
+  }
+ },
+ "spikegpt_216m": {
+  "settings": {
+   "chip": "loihi2",
+   "multicast": "tree",
+   "static": "chip",
+   "execution": "pipelined",
+   "balance": true,
+   "objective": "edp"
+  },
+  "chip_version": "2026.11.3-e6",
+  "spikebill_version": "0.1.0.dev0",
+  "chip_steps": 1225,
+  "value": {
+   "chips": 16,
+   "cores": 2008,
+   "energy_J": 3.671925408602907,
+   "latency_s": 0.10894021999999999,
+   "split": {
+    "synaptic": 0.8776115211534237,
+    "neuron": 0.007882606535843351,
+    "network": 0.00334080341590829,
+    "static": 0.1091797803573941,
+    "coproc": 0.0019852885374307297
+   },
+   "ratio_to_claim": null
+  },
+  "low": {
+   "chips": 16,
+   "cores": 2008,
+   "energy_J": 1.881084272822802,
+   "latency_s": 0.09362772,
+   "split": {
+    "synaptic": 0.8676844127004412,
+    "neuron": 0.007821260237927586,
+    "network": 0.003075993098070915,
+    "static": 0.11945585386389933,
+    "coproc": 0.001962480099660983
+   },
+   "ratio_to_claim": null
+  },
+  "high": {
+   "chips": 16,
+   "cores": 2008,
+   "energy_J": 11.647443730010789,
+   "latency_s": 0.7512267599999999,
+   "split": {
+    "synaptic": 0.42518890019528593,
+    "neuron": 0.0038250714740777846,
+    "network": 0.0023953992661536034,
+    "static": 0.567574795057102,
+    "coproc": 0.001015834007380866
+   },
+   "ratio_to_claim": null
+  }
+ },
+ "spikingformer_8_512": {
+  "settings": {
+   "chip": "loihi2",
+   "multicast": "tree",
+   "static": "chip",
+   "execution": "pipelined",
+   "balance": true,
+   "objective": "edp"
+  },
+  "chip_version": "2026.11.3-e6",
+  "spikebill_version": "0.1.0.dev0",
+  "chip_steps": 69,
+  "value": {
+   "chips": 168,
+   "cores": 21438,
+   "energy_J": 0.3166886039264449,
+   "latency_s": 0.002468433839335232,
+   "split": {
+    "synaptic": 0.49998425706566424,
+    "neuron": 0.1695485664096572,
+    "network": 0.02840076993563147,
+    "static": 0.3011800310126306,
+    "coproc": 0.0008863755764164532
+   },
+   "ratio_to_claim": 42.45155548611862
+  },
+  "low": {
+   "chips": 168,
+   "cores": 21438,
+   "energy_J": 0.15098148822860963,
+   "latency_s": 0.001605933839335232,
+   "split": {
+    "synaptic": 0.5311766130902192,
+    "neuron": 0.18064623748720518,
+    "network": 0.019192070799175166,
+    "static": 0.26804301127281666,
+    "coproc": 0.0009420673505836238
+   },
+   "ratio_to_claim": 20.238805392575017
+  },
+  "high": {
+   "chips": 168,
+   "cores": 21438,
+   "energy_J": 1.573439946723898,
+   "latency_s": 0.012971670714681856,
+   "split": {
+    "synaptic": 0.15465179558981654,
+    "neuron": 0.052514000449247714,
+    "network": 0.030794284267954126,
+    "static": 0.761759212057762,
+    "coproc": 0.00028070763521973656
+   },
+   "ratio_to_claim": 210.9168829388603
+  }
+ }
+}

@@ -1,0 +1,38 @@
+# Intel Loihi 2 (Intel 4). Per-parameter sources below; overview in docs/chips.md.
+#   [P] Loihi 2 tech brief (Intel 2021); Shrestha et al. 2024; Abreu et al. 2025.
+#   [L1] Loihi 1 silicon-calibrated value (SANA-FE loihi.yaml) used as a proxy: per-op energies of Loihi 2 are
+#        NOT public. low = 0.25x (assumed process/design gain), high = 1x.
+#   [E6] 2026-11-22: neuro-core energies (synop, neuron, spike, message, hop) = 0.65 x [L1], range 0.33-1.0 x [L1]:
+#        one scale fitted to Loihi 2 PilotNet-LIF hardware counters + measured dynamic power (3 repeated runs gave
+#        0.33 / 0.63 / 0.65). Does NOT include I/O or embedded-processor energy (E6: N-DNS 11-22x under).
+#   [D] derived here; [A] assumption, wide range.
+# Topology: brief says an 8x16-core mesh; router sharing is not public -> assumed 4 cores per router as in Loihi 1
+# (8x4 tiles x 4 cores) [A]. Barrier table: not public; multichip barrier from Loihi 1 (Frady 2020) as proxy.
+name: loihi2
+version: "2026.11.3-e6"   # bump when any value changes; reports cite version + sha256
+topology: {tiles_x: 8, tiles_y: 4, cores_per_tile: 4}
+params:
+  max_neurons:      {value: 8192,    source: "[P] brief Fig. 1 (up to 8192; depends on state size)"}
+  syn_mem_bits:     {value: 1048576, source: "[P] brief Fig. 1: up to 128 KB synaptic memory per core"}
+  max_fanin_axons:  {value: 4096,    source: "[A] Loihi 1 value (Naxin); Loihi 2 not public"}
+  max_fanout_axons: {value: 4096,    source: "[A] Loihi 1 value (Naxout); Loihi 2 not public"}
+  e_synop:          {value: 2.31e-11, low: 1.17e-11, high: 3.55e-11, unit: J, source: "[E6] 0.65 x [L1] (range 0.33-1.0); [L1] SANA-FE dense synapse"}
+  e_neuron_update:  {value: 3.33e-11, low: 1.69e-11, high: 5.12e-11, unit: J, source: "[E6] 0.65 x [L1] (range 0.33-1.0); [L1] SANA-FE soma access"}
+  e_neuron_active:  {value: 1.4e-11, low: 7.13e-12, high: 2.16e-11, unit: J, source: "[E6] 0.65 x [L1] (range 0.33-1.0); [L1] SANA-FE soma update"}
+  e_spike_gen:      {value: 4.5e-11, low: 2.29e-11, high: 6.93e-11, unit: J, source: "[E6] 0.65 x [L1] (range 0.33-1.0); [L1] SANA-FE soma spike out"}
+  e_spike_out:      {value: 7.22e-11, low: 3.66e-11, high: 1.11e-10, unit: J, source: "[E6] 0.65 x [L1] (range 0.33-1.0); [L1] SANA-FE axon out per message"}
+  e_hop:            {value: 2.34e-12, low: 1.19e-12, high: 3.6e-12, unit: J, source: "[E6] 0.65 x [L1] (range 0.33-1.0); [L1] SANA-FE hop mean"}
+  e_chip_hop:       {value: 36.0e-12, low: 3.6e-12, high: 360.0e-12, unit: J, source: "[A] not public; 10x on-chip hop, range 1x-100x"}
+  t_synop:          {value: 0.76e-9, low: 0.76e-9, high: 3.8e-9, unit: s, source: "[P] brief: 5x Loihi 1 synaptic ops; [L1] 3.8 ns / 5"}
+  t_neuron_update:  {value: 3.0e-9, low: 3.0e-9, high: 6.0e-9, unit: s, source: "[P] brief: 2x neuron update; [L1] 6.0 ns / 2"}
+  t_neuron_active:  {value: 1.85e-9, low: 1.85e-9, high: 3.7e-9, unit: s, source: "[P] 2x; [L1] 3.7 ns / 2"}
+  t_spike_gen:      {value: 3.0e-9, low: 3.0e-9, high: 30.0e-9, unit: s, source: "[P] brief: 10x spike generation; [L1] 30 ns / 10"}
+  t_spike_out:      {value: 5.1e-9, low: 5.1e-9, high: 5.1e-9, unit: s, source: "[L1] axon out (no Loihi 2 figure)"}
+  t_msg_in:         {value: 16.0e-9, low: 3.2e-9, high: 16.0e-9, unit: s, source: "[L1] axon in; low assumes 5x like synops [A]"}
+  t_hop:            {value: 5.3e-9, low: 4.1e-9, high: 6.5e-9, unit: s, source: "[L1] hop latency"}
+  t_link:           {value: 0.29e-9, low: 0.29e-9, high: 5.3e-9, unit: s, source: "[L1] Loihi 1 tile bandwidth 3.44 Gspike/s; high = hop latency"}
+  t_chip_hop:       {value: 1.25e-9, low: 1.25e-9, high: 5.0e-9, unit: s, source: "[P] brief fn 3: 800 Mtransfers/s (simulated); high = 4 transfers/packet [A]"}
+  t_barrier:        {value: 1.8e-6, low: 0.2e-6, high: 1.8e-6, unit: s, source: "[P] brief: min timestep < 200 ns (low); [L1] 1.8 us (value)"}
+  t_barrier_multichip: {value: 14.3e-6, low: 1.8e-6, high: 16.2e-6, unit: s, source: "[L1] Frady 2020 (Loihi 1 multichip) as proxy"}
+  p_static_core:    {value: 0.0, unit: W, source: "static booked per chip"}
+  p_static_chip:    {value: 0.23, low: 0.15, high: 0.55, unit: W, source: "[P] lava-dl PilotNet LIF notebook 0.232 W (value); low Abreu 2025 ~0.15 W; high Parpart 2023 0.54-0.55 W. v2026.11.2: range was 0.16-0.30 [D]"}
