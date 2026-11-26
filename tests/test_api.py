@@ -199,3 +199,64 @@ def test_graph_save_roundtrip(tmp_path):
     a = Simulator(g, chip="loihi2").run(balance=False).results["value"]["energy_J"]
     b = Simulator(str(tmp_path / "g.json"), chip="loihi2").run(balance=False).results["value"]["energy_J"]
     assert a == b
+
+
+def test_spread_fixed_mapping_per_input():
+    import numpy as np
+    import pytest
+    from spikebill import NetBuilder, Simulator
+    b = NetBuilder("spread", steps=4)
+    x = b.input("img", (3, 32, 32), rate=1.0)
+    c = b.conv2d(x, "c1", out_ch=16, k=3, rate=0.1)
+    b.dense(b.pool(c, "p1", rate=0.2), "fc", 64, rate=0.05)
+    sim = Simulator(b, chip="loihi2")
+    same = sim.spread([{"c1": 0.2}] * 3, balance=False)            # identical inputs: no spread, equals run()
+    ref = sim.run(rates={"c1": 0.2}, balance=False).results["value"]
+    assert same["energy"]["max"] == pytest.approx(same["energy"]["min"], rel=1e-12)
+    assert same["energy"]["p50"] == pytest.approx(ref["energy_J"], rel=1e-9)
+    assert same["latency"]["p50"] == pytest.approx(ref["latency_s"], rel=1e-9)
+    assert same["at_mean"]["energy_J"] == pytest.approx(ref["energy_J"], rel=1e-9)
+    s = sim.spread([{"c1": r} for r in (0.05, 0.1, 0.2, 0.4)], balance=False)
+    assert np.all(np.diff(s["energy_samples"]) > 0) and s["n"] == 4   # more spikes, more energy, same mapping
+    assert s["energy"]["p5"] < s["energy"]["p50"] < s["energy"]["p95"]
+    with pytest.raises(ValueError):
+        sim.spread([{"nope": 0.1}])
+    with pytest.raises(ValueError):
+        sim.spread([])
+    # tail-aware mapping (E28): the mapping rates are the per-population percentile, or an explicit dict
+    rl = [{"c1": r} for r in (0.05, 0.1, 0.2, 0.4)]
+    hi = sim.spread(rl, map_rates=100)
+    assert hi["map_rates"]["c1"] == pytest.approx(0.4)
+    assert sim.spread(rl, map_rates=0)["map_rates"]["c1"] == pytest.approx(0.05)
+    d = sim.spread(rl, map_rates={"c1": 0.1875})                  # the mean, given explicitly
+    m = sim.spread(rl)
+    assert d["energy"]["mean"] == pytest.approx(m["energy"]["mean"], rel=1e-12)
+    assert hi["at_mean"]["energy_J"] > 0 and hi["n"] == 4
+    for bad in ("p95", 101, {"nope": 0.1}):
+        with pytest.raises(ValueError):
+            sim.spread(rl, map_rates=bad)
+
+
+def test_balance_margin_headroom():
+    import pytest
+    from spikebill import NetBuilder, Simulator, compiled, mapping
+    from spikebill import balance as B
+    b = NetBuilder("margin", steps=4)
+    x = b.input("img", (3, 32, 32), rate=1.0)
+    c = b.conv2d(x, "c1", out_ch=32, k=3, rate=0.3)
+    c2 = b.conv2d(c, "c2", out_ch=32, k=3, rate=0.05)
+    b.dense(b.pool(c2, "p1", rate=0.1), "fc", 64, rate=0.05)
+    sim = Simulator(b, chip="loihi2")
+    sp, ac, _, _ = sim._activity(None, None, None, "pipelined")
+    m0, r0, _, h0 = B.balance(sim.graph, sim.chip, sp, ac)
+    m1, r1, _, h1 = B.balance(sim.graph, sim.chip, sp, ac, margin=0.5)
+    # the reported result is at the nominal spikes, whatever the margin
+    rn = compiled.step_result(compiled.compile_model(sim.graph, sim.chip, m1), sp, ac)
+    assert r1["time"]["step"] == pytest.approx(rn["time"]["step"]) and "score_margin" in h1[0]
+    assert m1.n_cores >= m0.n_cores                                # headroom never costs fewer cores here
+    assert B.band(h1)["n"] >= 1
+    with pytest.raises(ValueError):
+        B.balance(sim.graph, sim.chip, sp, ac, margin=-0.1)
+    rep = sim.run(balance_margin=0.5)
+    assert rep.provenance["balance_margin"] == 0.5
+    assert rep.results["value"]["latency_s"] > 0

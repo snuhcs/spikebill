@@ -962,3 +962,33 @@ def test_roofline_baseline():
     rep = sim.run(balance=False)
     rr = rep.roofline()
     assert abs(rr["full_energy_J"] / rep.results["value"]["energy_J"] - 1) < 1e-9
+
+
+def test_cli_spread(tmp_path):
+    """spikebill MODEL --spread (.npz and .csv) equals Simulator.spread; HTML / CSV written; bad inputs are errors."""
+    import numpy as np
+    import pytest
+    from spikebill import NetBuilder, Simulator, cli
+    b = NetBuilder("toy_spread", steps=4)
+    x = b.input("inp", (256,), rate=0.2)
+    h = b.dense(x, "h", 1024, rate=0.05)
+    b.dense(h, "out", 128, rate=0.1)
+    gpath = str(tmp_path / "toy.json"); b.graph().save(gpath)
+    R = np.array([[0.02, 0.1], [0.05, 0.2], [0.1, 0.05], [0.2, 0.3]])
+    np.savez(tmp_path / "r.npz", rates=R, pops=np.array(["h", "out"]))
+    sp = cli.main([gpath, "--spread", str(tmp_path / "r.npz"), "--no-balance",
+                   "--spread-html", str(tmp_path / "s.html"), "--spread-csv", str(tmp_path / "s.csv")])
+    ref = Simulator(b, chip="loihi2").spread([{"h": a, "out": c} for a, c in R], balance=False)
+    assert sp["energy"]["mean"] == pytest.approx(ref["energy"]["mean"]) and sp["n"] == 4
+    assert "<svg" in (tmp_path / "s.html").read_text() and len((tmp_path / "s.csv").read_text().splitlines()) == 5
+    (tmp_path / "r.csv").write_text("h,out\n" + "\n".join(f"{a},{c}" for a, c in R) + "\n")
+    sc = cli.main([gpath, "--spread", str(tmp_path / "r.csv"), "--no-balance"])
+    assert sc["latency"]["p95"] == pytest.approx(ref["latency"]["p95"])
+    assert cli.main([gpath, "--spread", str(tmp_path / "r.csv"), "--no-balance", "--map-rates", "95"])["n"] == 4
+    (tmp_path / "bad.csv").write_text("nope\n0.1\n")
+    with pytest.raises(ValueError):
+        cli.main([gpath, "--spread", str(tmp_path / "bad.csv")])
+    with pytest.raises(ValueError):
+        cli.main([gpath, "--spread", str(tmp_path / "r.csv"), "--map-rates", "p95"])
+    with pytest.raises(SystemExit):
+        cli.main([gpath, "--spread-html", str(tmp_path / "x.html")])

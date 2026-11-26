@@ -71,6 +71,88 @@ def list_chips():
     return names
 
 
+def load_rates_table(path, g):
+    """Per-input rates for `Simulator.spread`: a list of {pop: rate}, one per input. .npz: `rates` (N x P) and `pops`
+    (P names); .csv: a header row of population names, one row per input. Unknown
+    population names are an error."""
+    import numpy as np
+    if path.endswith(".npz"):
+        z = np.load(path)
+        if "rates" not in z.files or "pops" not in z.files:
+            raise ValueError(f"{path}: needs arrays 'rates' (inputs x populations) and 'pops' (names)")
+        R, pops = np.asarray(z["rates"], dtype=float), [str(x) for x in z["pops"]]
+    else:
+        import csv
+        rows = list(csv.reader(open(path)))
+        if len(rows) < 2:
+            raise ValueError(f"{path}: needs a header row of population names and at least one row of rates")
+        pops, R = [x.strip() for x in rows[0]], np.array([[float(v) for v in r] for r in rows[1:] if r], dtype=float)
+    if R.ndim != 2 or R.shape[1] != len(pops):
+        raise ValueError(f"{path}: rates have shape {R.shape}, expected (inputs, {len(pops)})")
+    unknown = set(pops) - set(g.populations)
+    if unknown:
+        raise ValueError(f"{path}: populations not in the model: {', '.join(sorted(unknown)[:5])}")
+    return [dict(zip(pops, row)) for row in R]
+
+
+def spread_summary(sp):
+    e, l, m = sp["energy"], sp["latency"], sp["at_mean"]
+    pct = [k for k in e if k.startswith("p")]
+    lines = [f"Per-input spread over {sp['n']} inputs ({sp['chips']} chips, one mapping fixed at "
+             f"{sp.get('map_label', 'the mean rates')})"]
+    lines.append("  energy  (mJ): " + "  ".join(f"{k} {e[k] * 1e3:.4g}" for k in pct)
+                 + f"  mean {e['mean'] * 1e3:.4g}  min {e['min'] * 1e3:.4g}  max {e['max'] * 1e3:.4g}")
+    lines.append("  latency (ms): " + "  ".join(f"{k} {l[k] * 1e3:.4g}" for k in pct)
+                 + f"  mean {l['mean'] * 1e3:.4g}  min {l['min'] * 1e3:.4g}  max {l['max'] * 1e3:.4g}")
+    lines.append(f"  at the mean rates: {m['energy_J'] * 1e3:.4g} mJ, {m['latency_s'] * 1e3:.4g} ms "
+                 f"({m['energy_J'] / e['mean'] - 1:+.1%} / {m['latency_s'] / l['mean'] - 1:+.1%} vs the mean per-input "
+                 "cost; a single estimate from mean rates is this number)")
+    return "\n".join(lines)
+
+
+def spread_html(sp, path, bins=40):
+    """Self-contained HTML: histograms of per-input energy and latency (inline SVG), with p5 / p50 / p95 and the cost
+    at the mean rates marked."""
+    import html
+    import numpy as np
+
+    def hist(x, at_mean, scale, unit, title):
+        x = np.asarray(x) * scale
+        lo, hi = float(min(x.min(), at_mean * scale)), float(max(x.max(), at_mean * scale))
+        hi = hi if hi > lo else lo + 1e-12
+        c, edges = np.histogram(x, bins=bins, range=(lo, hi))
+        W, H, L, B = 560, 200, 40, 30
+        sx = lambda v: L + (v - lo) / (hi - lo) * (W - L - 10)
+        sy = lambda n: H - B - n / max(c.max(), 1) * (H - B - 20)
+        bars = "".join(f'<rect x="{sx(edges[i]) + 1:.1f}" y="{sy(n):.1f}" width="{max(sx(edges[i + 1]) - sx(edges[i]) - 2, 1):.1f}" '
+                       f'height="{H - B - sy(n):.1f}" class="bar"><title>{edges[i]:.4g}-{edges[i + 1]:.4g} {unit}: {n}</title></rect>'
+                       for i, n in enumerate(c))
+        marks = ""
+        for lab, v, cls in (("p5", np.percentile(x, 5), "q"), ("p50", np.percentile(x, 50), "q"),
+                            ("p95", np.percentile(x, 95), "q"), ("at mean rates", at_mean * scale, "m")):
+            marks += (f'<line x1="{sx(v):.1f}" x2="{sx(v):.1f}" y1="14" y2="{H - B}" class="{cls}"/>'
+                      f'<text x="{sx(v) + 3:.1f}" y="{12 if cls == "m" else 24}" class="lab">{lab} {v:.4g}</text>')
+        axis = (f'<line x1="{L}" x2="{W - 10}" y1="{H - B}" y2="{H - B}" class="ax"/>'
+                f'<text x="{L}" y="{H - 8}" class="lab">{lo:.4g}</text>'
+                f'<text x="{W - 10}" y="{H - 8}" class="lab" text-anchor="end">{hi:.4g} {unit}</text>')
+        return (f"<h2>{html.escape(title)}</h2><svg viewBox='0 0 {W} {H}' role='img' "
+                f"aria-label='{html.escape(title)} histogram'>{bars}{marks}{axis}</svg>")
+
+    body = (hist(sp["energy_samples"], sp["at_mean"]["energy_J"], 1e3, "mJ", "Energy per inference")
+            + hist(sp["latency_samples"], sp["at_mean"]["latency_s"], 1e3, "ms", "Latency per inference"))
+    doc = f"""<!doctype html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Per-input cost spread</title><style>
+:root{{--bg:#fff;--fg:#1f2328;--muted:#656d76;--bar:#8aa9d6;--q:#656d76;--m:#c2410c}}
+@media (prefers-color-scheme:dark){{:root{{--bg:#0d1117;--fg:#e6edf3;--muted:#8b949e;--bar:#3b6db3;--q:#8b949e;--m:#fb923c}}}}
+body{{background:var(--bg);color:var(--fg);font:14px system-ui,sans-serif;max-width:640px;margin:24px auto;padding:0 16px}}
+svg{{width:100%;height:auto}} .bar{{fill:var(--bar)}} .q{{stroke:var(--q);stroke-dasharray:3 3}} .m{{stroke:var(--m);stroke-width:2}}
+.ax{{stroke:var(--muted)}} .lab{{fill:var(--muted);font-size:11px}} pre{{white-space:pre-wrap;color:var(--muted)}}
+</style></head><body><h1>Per-input cost spread</h1><pre>{html.escape(spread_summary(sp))}</pre>{body}</body></html>"""
+    with open(path, "w") as f:
+        f.write(doc)
+    return path
+
+
 def main(argv=None):
     p = argparse.ArgumentParser(prog="spikebill", description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     p.add_argument("model", nargs="?")
@@ -114,6 +196,14 @@ def main(argv=None):
     p.add_argument("--power-json", help="with --trace: the power trace as JSON")
     p.add_argument("--compare", nargs=2, metavar=("A.json", "B.json"),
                    help="compare two saved reports (--json output): totals, components, step terms, populations")
+    p.add_argument("--spread", metavar="RATES", help="per-input rates (.npz with 'rates' N x P and 'pops', or .csv with a "
+                   "header of population names, one row per input): one fixed mapping, every input evaluated on it; "
+                   "prints p5 / p50 / p95 / mean energy and latency and the cost at the mean rates")
+    p.add_argument("--map-rates", default="mean", metavar="mean|Q",
+                   help="with --spread: map at the mean rates (default) or at the per-population Q-th percentile "
+                        "(e.g. 95: tail-aware, E28)")
+    p.add_argument("--spread-html", help="with --spread: HTML histograms of per-input energy and latency")
+    p.add_argument("--spread-csv", help="with --spread: per-input energy and latency as CSV")
     a = p.parse_args(argv)
     if a.compare:
         from .api import Report
@@ -155,6 +245,26 @@ def main(argv=None):
         return tr
     if a.power_html or a.power_csv or a.power_json:
         p.error("--power-html / --power-csv / --power-json need --trace")
+    if a.spread:
+        try:
+            mr = a.map_rates if a.map_rates == "mean" else float(a.map_rates)
+        except ValueError:
+            raise ValueError(f"--map-rates must be 'mean' or a percentile, not {a.map_rates!r}")
+        sp = sim.spread(load_rates_table(a.spread, g), steps=a.steps, execution=a.execution,
+                        balance=not a.no_balance, objective=a.objective, workers=a.workers, map_rates=mr)
+        sp["map_label"] = "the mean rates" if mr == "mean" else f"the per-population p{mr:g} rates"
+        print(spread_summary(sp))
+        if a.spread_html:
+            print("wrote", spread_html(sp, a.spread_html))
+        if a.spread_csv:
+            with open(a.spread_csv, "w") as f:
+                f.write("input,energy_J,latency_s\n")
+                f.writelines(f"{i},{e:.6g},{l:.6g}\n" for i, (e, l) in
+                             enumerate(zip(sp["energy_samples"], sp["latency_samples"])))
+            print("wrote", a.spread_csv)
+        return sp
+    if a.spread_html or a.spread_csv or a.map_rates != "mean":
+        p.error("--spread-html / --spread-csv / --map-rates need --spread")
     rep = sim.run(rates=rates, active=active, steps=a.steps, execution=a.execution, balance=not a.no_balance,
                   ranges=a.range, objective=a.objective, workers=a.workers,
                   max_chips=a.max_chips, max_energy_increase=a.max_energy_increase, place={None: False, "contiguous": True}.get(a.place, a.place),

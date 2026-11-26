@@ -193,6 +193,13 @@ rates. `report.paper_block()` prints all four next to the energy and latency, an
 [`docs/reporting.md`](docs/reporting.md) gives a short checklist for papers. The zoo's reference estimates of
 published spiking transformers and SpikeGPT give a common point of comparison.
 
+One estimate is the cost at the mean firing rates. Inputs differ, and because the step time is set by the busiest
+core, the mean cost per input can sit above it: for the Spike-driven Transformer on 5,000 ImageNet images, by 12% in
+energy and 38% in latency. With rates recorded per input (one row per input), `spikebill MODEL --spread rates.npz
+--spread-html spread.html` (or `Simulator.spread`) reports the 5th, 50th and 95th percentiles on one fixed mapping;
+`--map-rates 95` maps at each layer's 95th-percentile rate, which leaves headroom for the layers whose activity varies
+most.
+
 ## Validation and limits
 
 The estimates are checked against simulators; no Loihi 2 or multi-chip measurement has been reproduced yet.

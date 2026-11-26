@@ -363,12 +363,12 @@ class Simulator:
 
     def run(self, rates=None, active=None, steps=None, execution="pipelined", balance=True, ranges=False,
             objective="edp", workers=1, max_chips=None, max_energy_increase=None, place=False,
-            spike_variance="mean"):
+            spike_variance="mean", balance_margin=0.0):
         """Estimate one inference. rates: {pop: spikes per neuron per SNN step} (default: the graph's); active:
         {pop: fraction of neurons updated} (default: estimated from received events); steps: SNN steps (default:
         the graph's); execution "pipelined" (T + depth chip steps) | "lockstep" (T); balance: load-balance the
         mapping (objective "edp" | "energy" | "latency"); ranges: also evaluate all parameters at low / high;
-        max_chips / max_energy_increase: budgets for the balanced mapping (see spikebill.balance.balance); place: also
+        max_chips / max_energy_increase / balance_margin (headroom, E29): options of the balanced mapping (see spikebill.balance.balance); place: also
         search the placement (fill order, spikebill.place.search) and keep the best order under `objective`
         (place="split": populations may also occupy non-contiguous blocks, release gap 23); with
         balance, jointly for every balancer candidate (E20: -36 to -38% EDP on the network-bound Meta-SpikeFormer 55M, 0% on the compute-bound zoo transformers).
@@ -383,7 +383,7 @@ class Simulator:
         if balance:
             m, _, caps, hist = balance_mod.balance(g, self.chip, spikes, act, objective=objective, workers=workers,
                                                    max_chips=max_chips, max_energy_increase=max_energy_increase,
-                                                   place=place)
+                                                   place=place, margin=balance_margin)
             b = balance_mod.band(hist)
             bband = dict(tol=b["tol"], candidates=b["n"], chips=b["chips"],
                          energy_J=tuple(x * chip_steps for x in b["energy"]),
@@ -433,7 +433,7 @@ class Simulator:
                     overrides=getattr(self, "overrides", None),
                     attention=(info or {}).get("attention") or (
                         "coproc" if any(p.coproc_ops for p in g.populations.values()) else None), balance_band=bband,
-                    placement=placement, spike_variance=spike_variance,
+                    placement=placement, spike_variance=spike_variance, balance_margin=balance_margin if balance else None,
                     balance_budget=(dict(max_chips=max_chips, max_energy_increase=max_energy_increase)
                                     if balance and (max_chips is not None or max_energy_increase is not None) else None))
         return Report(g.name, self.chip.name, chip_steps, T, results, mp, balance, caps,
@@ -514,6 +514,57 @@ class Simulator:
         pct = lambda x: dict(zip(("p5", "p50", "p95"), np.percentile(x, [5, 50, 95]).tolist()))
         return dict(energy=pct(E), latency=pct(L), energy_samples=E, latency_samples=L, prior=prior, n=n,
                     params=sorted(box), chips=m.n_chips, groups=[list(g_) for g_ in groups])
+
+    def spread(self, rates_list, steps=None, execution="pipelined", balance=True, objective="edp", workers=1,
+               percentiles=(5, 50, 95), map_rates="mean", balance_margin=0.0):
+        """Per-input spread of one inference's cost. rates_list: one {pop: rate} per input (e.g. per image; missing
+        populations keep the graph's rate). The mapping is chosen once at the mean rates over the inputs (balanced
+        unless balance=False), as a chip compiled once and then fed many inputs; each input is evaluated on that
+        fixed mapping, chip parameters at their values. Returns energy / latency samples per inference, their
+        percentiles, min / max, the cost at the mean rates and the mean of the per-input costs (E26).
+        map_rates: the rates the mapping is chosen at: "mean" (default), a number q (per-population q-th percentile
+        over the inputs, a tail-aware mapping, E28), or an explicit {pop: rate} (e.g. from a separate fit set).
+        balance_margin: headroom for the balancer (spikebill.balance.balance(margin=...), E29)."""
+        rates_list = [dict(r) for r in rates_list]
+        if not rates_list:
+            raise ValueError("rates_list is empty")
+        g = self.graph
+        keys = sorted(set().union(*rates_list))
+        mean = {k: float(np.mean([r.get(k, g.populations[k].rate if k in g.populations else 0.0)
+                                  for r in rates_list])) for k in keys}
+        if isinstance(map_rates, dict):
+            unknown = set(map_rates) - set(g.populations)
+            if unknown:
+                raise ValueError(f"unknown populations in map_rates: {sorted(unknown)[:5]}")
+            mr = dict(map_rates)
+        elif isinstance(map_rates, str) and map_rates == "mean":
+            mr = mean
+        elif isinstance(map_rates, (int, float)) and 0 <= map_rates <= 100:
+            mr = {k: float(np.percentile([r.get(k, g.populations[k].rate if k in g.populations else 0.0)
+                                          for r in rates_list], map_rates)) for k in keys}
+        else:
+            raise ValueError(f"map_rates must be 'mean', a percentile in [0, 100] or a dict, not {map_rates!r}")
+        spikes, act, T, chip_steps = self._activity(mr, None, steps, execution)
+        m = (balance_mod.balance(g, self.chip, spikes, act, objective=objective, workers=workers,
+                                 margin=balance_margin)[0] if balance
+             else mapping_mod.map_graph(g, self.chip))
+        cm = compiled.compile_model(g, self.chip, m)
+        if mr is not mean:
+            spikes, act, _, _ = self._activity(mean, None, steps, execution)
+        S, A = [], []
+        for r in rates_list:
+            s, a, _, _ = self._activity(r, None, steps, execution)
+            S.append([s[k] for k in cm.pops]); A.append([a[k] for k in cm.pops])
+        ev = compiled.evaluate(cm, np.array(S), np.array(A))
+        parts = [k for k in ("synaptic", "neuron", "network", "static", "coproc") if k in ev]
+        E = np.sum([np.asarray(ev[k]) for k in parts], axis=0) * chip_steps
+        L = np.asarray(ev["step"]) * chip_steps
+        r0 = compiled.step_result(cm, spikes, act)
+        at_mean = dict(energy_J=sum(r0["energy"].values()) * chip_steps, latency_s=r0["time"]["step"] * chip_steps)
+        stats = lambda x: dict({f"p{q:g}": float(v) for q, v in zip(percentiles, np.percentile(x, percentiles))},
+                               min=float(x.min()), max=float(x.max()), mean=float(x.mean()))
+        return dict(energy=stats(E), latency=stats(L), energy_samples=E, latency_samples=L, at_mean=at_mean,
+                    n=len(rates_list), chips=m.n_chips, chip_steps=chip_steps, map_rates=mr)
 
     def fast(self, rates=None, active=None, steps=None, execution="pipelined"):
         """Cheap repeated estimates (e.g. inside a training loop, as a regulariser or a logged metric): the first call

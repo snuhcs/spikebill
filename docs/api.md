@@ -30,6 +30,7 @@ NetBuilder, NIR / JSON path or `"zoo:<name>"`; `chip`: shipped name, YAML path o
 | `run(rates=None, active=None, steps=None, execution="pipelined", balance=True, ranges=False, objective="edp", max_chips=None, max_energy_increase=None, place=False, spike_variance="mean")` | `Report` for one inference; the budgets restrict the balanced mapping (CLI `--max-chips`, `--max-energy-increase`); `place=True` also searches the fill order (CLI `--place`), `place="split"` also non-contiguous blocks per population (CLI `--place split`); `spike_variance="binomial"` sets the compute term to the expected busiest core under Binomial spikes (`spikebill.variance.expected_compute`, analytic; CLI `--spike-variance binomial`) |
 | `sensitivity(...)` | one-at-a-time (tornado) rows per chip parameter, sorted by energy swing |
 | `uncertainty(n=512, prior="loguniform", groups=(), ...)` | Monte Carlo over the parameter box: energy / latency p5 / p50 / p95 and samples |
+| `spread(rates_list, balance=True, map_rates="mean", ...)` | per-input spread: one `{pop: rate}` per input (e.g. per image), mapping fixed at `map_rates` (the mean rates, a per-population percentile such as `95`, or an explicit `{pop: rate}` from a fit set); energy / latency p5 / p50 / p95, min / max, mean, samples and the cost at the mean rates (E26: on SDT V1 over 5,000 ImageNet images the p5-p95 width is 51% of the median for energy and 98% for latency, and the cost at the mean rates is 10% / 28% below the mean per-image cost; E28: `map_rates=95` cuts the mean per-image latency by 24% and energy by 5% on held-out images; `balance_margin` (also on `run`) balances at spikes x (1 + margin), which E29 found much weaker: use a percentile when samples exist) |
 | `fast(rates=None, ...)` | `dict(energy_J, latency_s, split, chips)` in milliseconds after the first call (cached greedy mapping; for training loops) |
 | `run_trace(spikes_t, active_t, balance=False)` | `(per-step arrays, mapping)` for a recorded trace (lists of `{pop: count}` per chip step) |
 | `measured_trace(execution="pipelined")` | per-chip-step `{pop: count}` measured by `from_torch` (`trace_info["rates_t"]`, skewed by pipeline level); `power_trace(sim.measured_trace())` |
@@ -99,6 +100,7 @@ packets with `buf`-flit link queues and credit back-pressure, E23).
 spikebill MODEL [--chip loihi2] [--rate R | --rates rates.json] [--steps T] [--range] [--multicast tree]
        [--static chip|cores|none] [--execution pipelined|lockstep] [--no-balance] [--objective edp]
        [--by-pop N] [--paper-block latex] [--json out.json] [--csv pops.csv] [--viz out.html] [--plots DIR]
+spikebill MODEL --spread rates.npz|rates.csv [--map-rates mean|95] [--spread-html s.html] [--spread-csv s.csv]
 spikebill --compare a.json b.json
 spikebill --list-chips | --list-zoo | --chip NAME --describe | --version
 spikebill-validate [--quick] [--skip-sanafe] [--skip-packet] [--json out.json]
@@ -107,3 +109,6 @@ spikebill-validate [--quick] [--skip-sanafe] [--skip-packet] [--json out.json]
 `MODEL` is a NIR or JSON path or `zoo:<name>`. Population names in `--rates` (and in `Simulator.run(rates=, active=)`)
 must exist in the model (a typo is an error with close matches, not a silent fallback to the graph's rate); rates
 must be >= 0 and `active` fractions in [0, 1]. User errors print one line and exit with status 2.
+`--spread` takes per-input rates (`spikebill.cli.load_rates_table`: .npz with `rates` (inputs x populations) and `pops`
+(names), or a CSV with a header of population names and one row per input) and prints the per-input
+spread on one fixed mapping and the cost at the mean rates; `--spread-html` draws both histograms.
