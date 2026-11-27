@@ -580,8 +580,27 @@ def from_torch(model, inputs, run=None, multi_step=False, steps=None, name=None,
                 kind = "conv" if N > 1 else "dense"
             if pools:
                 info["warnings"].append(f"{n}: pooling of currents {pools} folded into the weight layer (approximation)")
-            for s in weight_srcs(n):
-                frac = sizes[s] / max(1, sum(sizes[x] for x in weight_srcs(n)))
+            srcs = weight_srcs(n)
+            if kind == "dense":
+                # a reduction between the sources and the layer (e.g. a mean over tokens before the classifier head):
+                # the layer reads in_elems values, not every source neuron. Cost the reduction as a graded population
+                # of in_elems neurons, each fed by its share of the source elements (fan-out 1), and the layer from it
+                # (release gap 48, E30: dense from every token made the head bind the step).
+                in_elems = sizes[dst] / dout * din
+                tot = sum(sizes[x] for x in srcs)
+                if tot > 1.5 * in_elems and in_elems >= 1:
+                    rname = n + ":in"
+                    if rname not in sizes:
+                        add_pop(rname, in_elems, 1.0)
+                        pop_kind[rname] = True
+                        for s in srcs:
+                            b_projs.append(dict(src=s, dst=rname, kind="conv", fanout=1.0, weight_bits=weight_bits))
+                        info["warnings"].append(f"{n}: input is a reduction of {', '.join(sorted(srcs))} "
+                                                f"({tot:.0f} -> {in_elems:.0f} elements); costed as a graded population "
+                                                f"{rname} (fan-out 1 from each source element)")
+                    srcs = {rname}
+            for s in srcs:
+                frac = sizes[s] / max(1, sum(sizes[x] for x in srcs))
                 b_projs.append(dict(src=s, dst=dst, kind=kind, fanout=syn * frac / max(sizes[s], 1),
                                     weight_bits=weight_bits, **shared))
     def pops_of(nodes, seen=()):
@@ -651,7 +670,7 @@ def from_torch(model, inputs, run=None, multi_step=False, steps=None, name=None,
         if pname == "input":
             return -1
         base = pname.split(":")[0]
-        return tr.order.get(base, len(tr.order)) + (0.5 if pname.endswith(":out") else 0.0)
+        return tr.order.get(base, len(tr.order)) + (0.5 if pname.endswith(":out") else -0.25 if pname.endswith(":in") else 0.0)
     b_pops.sort(key=lambda p: rank(p["name"]))
     used = {p["src"] for p in b_projs} | {p["dst"] for p in b_projs}
     b_pops = [p for p in b_pops if p["name"] in used or p["name"] == "input" or p.get("coproc_msgs") or p.get("coproc_ops")]

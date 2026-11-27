@@ -331,3 +331,25 @@ def test_spikingjelly_rates_match_framework(mode):
     got = sorted(p.rate for k, p in g.populations.items() if k != "input")
     assert len(got) == 2 and np.allclose(got, ref, atol=1e-9), (got, ref)
     assert ref[1] > 0.1                                   # the network actually spikes
+
+
+def test_reduction_before_linear_head():
+    """A global mean over positions before a Linear head (spiking transformers, ResNets) is a reduction population
+    of the head's input size, not a dense projection from every position (release gap 48, E30)."""
+    class GapNet(nn.Module):
+        def __init__(s):
+            super().__init__()
+            s.c = nn.Conv2d(1, 16, 3, padding=1); s.l = snn.Leaky(beta=0.9, init_hidden=True, threshold=0.3)
+            s.c2 = nn.Conv2d(16, 16, 1); s.head = nn.Linear(16, 10)
+
+        def forward(s, x):
+            y = s.c2(s.l(s.c(x)))                  # graded (T*B, 16, 16, 16)
+            return s.head(y.flatten(2).mean(2))     # mean over 256 positions, then Linear 16 -> 10
+    torch.manual_seed(0)
+    g, info = from_torch(GapNet(), (torch.rand(4, 2, 1, 16, 16) < 0.5).float())
+    assert "head:in" in g.populations and g.populations["head:in"].size == 16
+    into_head = [p for p in g.projections if p.dst.startswith("head")]
+    assert {p.src for p in into_head if p.dst != "head:in"} == {"head:in"}
+    syn = sum(g.n_synapses(p) for p in into_head if p.src == "head:in")
+    assert syn == pytest.approx(16 * 10)
+    assert any("reduction" in w for w in info["warnings"])
