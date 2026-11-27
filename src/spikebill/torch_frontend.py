@@ -130,6 +130,7 @@ class _Tracker:
         self.order = {}                # node -> first time it produced an output (dataflow order for placement)
         self.attention = "excluded"
         self.depth = 0
+        self.batch = None              # (T, B, multi_step) when known: per-input counts are recorded
         leaves = []
         for name, m in model.named_modules():
             k = _kind(m, self.extra)
@@ -261,6 +262,7 @@ class _Tracker:
                 st["elems"] += float(yd.numel())
                 lead = yd.reshape(yd.shape[0], -1) if yd.dim() > 1 else yd.reshape(1, -1)
                 st.setdefault("per_call", []).append(((lead != 0).sum(1).double().cpu().numpy(), lead.shape[1]))
+                self._per_input(st, yd)
                 if st["binary"] and not bool(((yd == 0) | (yd == 1)).all()):
                     st["binary"] = False
             self.order.setdefault(name, len(self.order))
@@ -274,6 +276,7 @@ class _Tracker:
         td = t.detach()
         lead = td.reshape(td.shape[0], -1) if td.dim() > 1 else td.reshape(1, -1)
         self.input_stats.setdefault("per_call", []).append(((lead != 0).sum(1).double().cpu().numpy(), lead.shape[1]))
+        self._per_input(self.input_stats, td)
         self.input_stats["spikes"] += float((td != 0).sum())
         self.input_stats["elems"] += float(td.numel())
         if self.input_stats["binary"] and not bool(((td == 0) | (td == 1)).all()):
@@ -282,6 +285,28 @@ class _Tracker:
             self.input_stats["numel"] = t.numel()
             self.input_stats["shape"] = tuple(t.shape)
         self.mark(t, {"input"})
+
+    def _per_input(self, st, y):
+        """Add non-zero and element counts per batch sample. Single-step: dimension 0 is the batch; multi-step:
+        (T, B, ...) or (T*B, ...) (SpikingJelly SeqToANNContainer). Other shapes: per-input rates not available."""
+        if self.batch is None or st.get("per_input_bad"):
+            return
+        T, B, ms = self.batch
+        if ms and y.dim() >= 2 and y.shape[0] == T and y.shape[1] == B:
+            v = y.reshape(T, B, -1).transpose(0, 1).reshape(B, -1)
+        elif ms and y.dim() >= 1 and y.shape[0] == T * B:
+            v = y.reshape(T, B, -1).transpose(0, 1).reshape(B, -1)
+        elif not ms and y.dim() >= 1 and y.shape[0] == B:
+            v = y.reshape(B, -1)
+        else:
+            st["per_input_bad"] = True
+            return
+        cnt = (v != 0).sum(1).double().cpu().numpy()
+        if "per_input" in st:
+            st["per_input"][0] += cnt
+            st["per_input"][1] += v.shape[1]
+        else:
+            st["per_input"] = [cnt, float(v.shape[1])]
 
     def close(self):
         for h in self.handles:
@@ -345,6 +370,8 @@ def from_torch(model, inputs, run=None, multi_step=False, steps=None, name=None,
         raise ValueError(f"attention must be 'excluded', 'andgate' or 'coproc', not {attention!r}")
     tr = _Tracker(model, neuron_types)
     tr.attention = attention
+    if run is None and inputs.dim() > 1:
+        tr.batch = (int(inputs.shape[0]), int(inputs.shape[1]), bool(multi_step))
     was_training = model.training
     model.eval()
     try:
@@ -677,7 +704,28 @@ def from_torch(model, inputs, run=None, multi_step=False, steps=None, name=None,
     g = graph_mod.from_dict(dict(name=name or type(model).__name__, steps_per_inference=T, populations=b_pops,
                                  projections=b_projs))
     info["rates_t"] = _rates_t(tr, stats, g, T, multi_step, run is not None)
+    info["rates_per_input"] = _rates_per_input(tr, stats, g)
     return g, info
+
+
+def _rates_per_input(tr, stats, g):
+    """Measured rate of each spiking population (neurons, pools of spikes, binary input) per batch sample:
+    a list of B {pop: rate} dicts, the input of `Simulator.spread`. Populations whose output shape does not show
+    the batch (and graded populations) are left out (the graph's rate applies). Empty with a custom `run`."""
+    if tr.batch is None:
+        return []
+    B = tr.batch[1]
+    cols = {}
+    for pname in g.populations:
+        if pname == "input":
+            st = tr.input_stats if tr.input_stats["binary"] else None
+        else:
+            st = stats.get(pname) if tr.kinds.get(pname) in ("neuron", "pool") else None
+        if not st or st.get("per_input_bad") or "per_input" not in st:
+            continue
+        cnt, el = st["per_input"]
+        cols[pname] = cnt / max(el, 1.0)
+    return [{p: float(v[b]) for p, v in cols.items()} for b in range(B)]
 
 
 def _rates_t(tr, stats, g, T, multi_step, custom_run):

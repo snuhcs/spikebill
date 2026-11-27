@@ -7,8 +7,8 @@ authors:
     given-names: Hyunseok
   - family-names: Lee
     given-names: Youngki
-version: 0.1.0
-date-released: 2026-11-26
+version: 0.2.0
+date-released: 2026-11-27
 license: Apache-2.0
 repository-code: "https://github.com/snuhcs/spikebill"
 keywords:

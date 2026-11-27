@@ -198,7 +198,10 @@ core, the mean cost per input can sit above it: for the Spike-driven Transformer
 energy and 38% in latency. With rates recorded per input (one row per input), `spikebill MODEL --spread rates.npz
 --spread-html spread.html` (or `Simulator.spread`) reports the 5th, 50th and 95th percentiles on one fixed mapping;
 `--map-rates 95` maps at each layer's 95th-percentile rate, which leaves headroom for the layers whose activity varies
-most.
+most. A PyTorch model traced on a batch records the per-input rates itself:
+`sim = Simulator.from_torch(net, x, chip="loihi2"); sim.spread(sim.trace_info["rates_per_input"])`. To report the
+spread in a paper, `--paper-block latex` with `--spread` (or `spikebill.spread_block(sp)`) gives the median, the
+5th-95th percentile range and the settings that change them.
 
 ## Validation and limits
 
@@ -236,7 +239,7 @@ Until the white paper appears, please cite the software. GitHub shows the same e
   author  = {Oh, Hyunseok and Lee, Youngki},
   title   = {{SpikeBill}: energy, latency and chip count of spiking neural networks on neuromorphic chip systems},
   year    = {2026},
-  version = {0.1.0},
+  version = {0.2.0},
   url     = {https://github.com/snuhcs/spikebill},
   license = {Apache-2.0}
 }

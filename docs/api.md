@@ -8,7 +8,7 @@ The model behind the numbers: `docs/cost_model.md`. Chip files: `docs/chips.md`.
 
 | call | what it gives |
 |---|---|
-| `spikebill.from_torch(model, inputs, multi_step=False, run=None, attention="excluded", ...)` | `(Graph, info)` from a spiking PyTorch module (snnTorch, SpikingJelly, own neuron classes) traced on input batches; firing rates measured. `attention`: `"excluded"` / `"andgate"` / `"coproc"` for spike x spike products (matrix and element-wise). `info`: rates, warnings, `unmapped_ops` (products with measured op counts; non-spiking ops such as softmax / LayerNorm with element counts, not costed). |
+| `spikebill.from_torch(model, inputs, multi_step=False, run=None, attention="excluded", ...)` | `(Graph, info)` from a spiking PyTorch module (snnTorch, SpikingJelly, own neuron classes) traced on input batches; firing rates measured. `attention`: `"excluded"` / `"andgate"` / `"coproc"` for spike x spike products (matrix and element-wise). `info`: rates, warnings, `unmapped_ops` (products with measured op counts; non-spiking ops such as softmax / LayerNorm with element counts, not costed), `rates_per_input` (one `{pop: rate}` per batch sample, for `Simulator.spread`; empty with a custom `run`). |
 | `Simulator.from_torch(model, inputs, chip=..., trace_kw=None, **kw)` | the same, wrapped in a `Simulator` |
 | `spikebill.NetBuilder(name, steps, weight_bits)` | build a graph in code: `input`, `pop`, `connect`, `dense`, `conv2d`, `pool`, `tokens`, `linear`, `lif`, `graph()` |
 | `spikebill.nir_frontend.read(path)`, `nir_frontend.from_nir(g)` | a NIR graph -> `(Graph, info)` with exact connectivity |
@@ -31,6 +31,7 @@ NetBuilder, NIR / JSON path or `"zoo:<name>"`; `chip`: shipped name, YAML path o
 | `sensitivity(...)` | one-at-a-time (tornado) rows per chip parameter, sorted by energy swing |
 | `uncertainty(n=512, prior="loguniform", groups=(), ...)` | Monte Carlo over the parameter box: energy / latency p5 / p50 / p95 and samples |
 | `spread(rates_list, balance=True, map_rates="mean", ...)` | per-input spread: one `{pop: rate}` per input (e.g. per image), mapping fixed at `map_rates` (the mean rates, a per-population percentile such as `95`, or an explicit `{pop: rate}` from a fit set); energy / latency p5 / p50 / p95, min / max, mean, samples and the cost at the mean rates (E26: on SDT V1 over 5,000 ImageNet images the p5-p95 width is 51% of the median for energy and 98% for latency, and the cost at the mean rates is 10% / 28% below the mean per-image cost; E28: `map_rates=95` cuts the mean per-image latency by 24% and energy by 5% on held-out images; `balance_margin` (also on `run`) balances at spikes x (1 + margin), which E29 found much weaker: use a percentile when samples exist) |
+| `spikebill.spread_block(sp, fmt="latex")` | citable description of a `spread` result for a paper (`"latex"` or `"markdown"`): median, p5-p95 and mean of energy and latency per inference, the cost at the mean rates and its gap, the inputs and mapping rates, chip version + sha256, mapping settings, model size; CLI `--spread ... --paper-block markdown` |
 | `fast(rates=None, ...)` | `dict(energy_J, latency_s, split, chips)` in milliseconds after the first call (cached greedy mapping; for training loops) |
 | `run_trace(spikes_t, active_t, balance=False)` | `(per-step arrays, mapping)` for a recorded trace (lists of `{pop: count}` per chip step) |
 | `measured_trace(execution="pipelined")` | per-chip-step `{pop: count}` measured by `from_torch` (`trace_info["rates_t"]`, skewed by pipeline level); `power_trace(sim.measured_trace())` |
@@ -111,4 +112,4 @@ must exist in the model (a typo is an error with close matches, not a silent fal
 must be >= 0 and `active` fractions in [0, 1]. User errors print one line and exit with status 2.
 `--spread` takes per-input rates (`spikebill.cli.load_rates_table`: .npz with `rates` (inputs x populations) and `pops`
 (names), or a CSV with a header of population names and one row per input) and prints the per-input
-spread on one fixed mapping and the cost at the mean rates; `--spread-html` draws both histograms.
+spread on one fixed mapping and the cost at the mean rates; `--spread-html` draws both histograms; `--paper-block` prints `spread_block`.

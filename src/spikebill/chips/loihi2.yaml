@@ -9,7 +9,7 @@
 # Topology: brief says an 8x16-core mesh; router sharing is not public -> assumed 4 cores per router as in Loihi 1
 # (8x4 tiles x 4 cores) [A]. Barrier table: not public; multichip barrier from Loihi 1 (Frady 2020) as proxy.
 name: loihi2
-version: "2026.11.3-e6"   # bump when any value changes; reports cite version + sha256
+version: "2026.11.4-e6"   # bump when any value changes; reports cite version + sha256
 topology: {tiles_x: 8, tiles_y: 4, cores_per_tile: 4}
 params:
   max_neurons:      {value: 8192,    source: "[P] brief Fig. 1 (up to 8192; depends on state size)"}
@@ -22,7 +22,7 @@ params:
   e_spike_gen:      {value: 4.5e-11, low: 2.29e-11, high: 6.93e-11, unit: J, source: "[E6] 0.65 x [L1] (range 0.33-1.0); [L1] SANA-FE soma spike out"}
   e_spike_out:      {value: 7.22e-11, low: 3.66e-11, high: 1.11e-10, unit: J, source: "[E6] 0.65 x [L1] (range 0.33-1.0); [L1] SANA-FE axon out per message"}
   e_hop:            {value: 2.34e-12, low: 1.19e-12, high: 3.6e-12, unit: J, source: "[E6] 0.65 x [L1] (range 0.33-1.0); [L1] SANA-FE hop mean"}
-  e_chip_hop:       {value: 36.0e-12, low: 3.6e-12, high: 360.0e-12, unit: J, source: "[A] not public; 10x on-chip hop, range 1x-100x"}
+  e_chip_hop:       {value: 36.0e-12, low: 3.6e-12, high: 360.0e-12, unit: J, source: "[A] not public; 10x the Loihi 1 on-chip hop (3.6 pJ), range 1x-100x"}
   t_synop:          {value: 0.76e-9, low: 0.76e-9, high: 3.8e-9, unit: s, source: "[P] brief: 5x Loihi 1 synaptic ops; [L1] 3.8 ns / 5"}
   t_neuron_update:  {value: 3.0e-9, low: 3.0e-9, high: 6.0e-9, unit: s, source: "[P] brief: 2x neuron update; [L1] 6.0 ns / 2"}
   t_neuron_active:  {value: 1.85e-9, low: 1.85e-9, high: 3.7e-9, unit: s, source: "[P] 2x; [L1] 3.7 ns / 2"}

@@ -1,4 +1,4 @@
-**loihi2 v2026.11.3-e6 (sha256 4e4802f9e8e5); 8x4x1 tiles x 4 cores**
+**loihi2 v2026.11.4-e6 (sha256 25a5aab6c060); 8x4x1 tiles x 4 cores**
 
 | key | value | low | high | unit | meaning | source |
 |---|---|---|---|---|---|---|
@@ -12,7 +12,7 @@
 | `e_spike_gen` | 4.5e-11 | 2.29e-11 | 6.93e-11 | J | energy per spike generated | [E6] 0.65 x [L1] (range 0.33-1.0); [L1] SANA-FE soma spike out |
 | `e_spike_out` | 7.22e-11 | 3.66e-11 | 1.11e-10 | J | energy per message sent | [E6] 0.65 x [L1] (range 0.33-1.0); [L1] SANA-FE axon out per message |
 | `e_hop` | 2.34e-12 | 1.19e-12 | 3.6e-12 | J | energy per tile-to-tile hop | [E6] 0.65 x [L1] (range 0.33-1.0); [L1] SANA-FE hop mean |
-| `e_chip_hop` | 3.6e-11 | 3.6e-12 | 3.6e-10 | J | energy per chip-to-chip hop | [A] not public; 10x on-chip hop, range 1x-100x |
+| `e_chip_hop` | 3.6e-11 | 3.6e-12 | 3.6e-10 | J | energy per chip-to-chip hop | [A] not public; 10x the Loihi 1 on-chip hop (3.6 pJ), range 1x-100x |
 | `t_synop` | 7.6e-10 | 7.6e-10 | 3.8e-09 | s | time per synaptic event | [P] brief: 5x Loihi 1 synaptic ops; [L1] 3.8 ns / 5 |
 | `t_neuron_update` | 3e-09 | 3e-09 | 6e-09 | s | time per neuron per step | [P] brief: 2x neuron update; [L1] 6.0 ns / 2 |
 | `t_neuron_active` | 1.85e-09 | 1.85e-09 | 3.7e-09 | s | extra time per active neuron | [P] 2x; [L1] 3.7 ns / 2 |

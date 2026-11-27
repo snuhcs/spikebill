@@ -8,8 +8,8 @@
    "balance": true,
    "objective": "edp"
   },
-  "chip_version": "2026.11.3-e6",
-  "spikebill_version": "0.1.0.dev0",
+  "chip_version": "2026.11.4-e6",
+  "spikebill_version": "0.2.0",
   "chip_steps": 69,
   "value": {
    "chips": 164,
@@ -63,8 +63,8 @@
    "balance": true,
    "objective": "edp"
   },
-  "chip_version": "2026.11.3-e6",
-  "spikebill_version": "0.1.0.dev0",
+  "chip_version": "2026.11.4-e6",
+  "spikebill_version": "0.2.0",
   "chip_steps": 99,
   "value": {
    "chips": 189,
@@ -118,8 +118,8 @@
    "balance": true,
    "objective": "edp"
   },
-  "chip_version": "2026.11.3-e6",
-  "spikebill_version": "0.1.0.dev0",
+  "chip_version": "2026.11.4-e6",
+  "spikebill_version": "0.2.0",
   "chip_steps": 1225,
   "value": {
    "chips": 16,
@@ -173,8 +173,8 @@
    "balance": true,
    "objective": "edp"
   },
-  "chip_version": "2026.11.3-e6",
-  "spikebill_version": "0.1.0.dev0",
+  "chip_version": "2026.11.4-e6",
+  "spikebill_version": "0.2.0",
   "chip_steps": 69,
   "value": {
    "chips": 168,

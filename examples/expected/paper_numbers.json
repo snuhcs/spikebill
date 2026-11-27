@@ -1,5 +1,5 @@
 {
- "note": "Numbers as printed in the white paper (chip loihi2 2026.11.3-e6; reference settings of spikebill.zoo, mapping balanced again at each parameter end). A number matches when it rounds to the printed digits. kind 'max': the printed number is a maximum over runs / mappings; the check is |error| <= it.",
+ "note": "Numbers as printed in the white paper (chip loihi2 2026.11.4-e6; reference settings of spikebill.zoo, mapping balanced again at each parameter end). A number matches when it rounds to the printed digits. kind 'max': the printed number is a maximum over runs / mappings; the check is |error| <= it.",
  "numbers": [
   {
    "id": "table.sdt_v1_8_512.chips",

@@ -353,3 +353,57 @@ def test_reduction_before_linear_head():
     syn = sum(g.n_synapses(p) for p in into_head if p.src == "head:in")
     assert syn == pytest.approx(16 * 10)
     assert any("reduction" in w for w in info["warnings"])
+
+
+def test_rates_per_input_feed_spread():
+    """info['rates_per_input']: one {pop: rate} per batch sample (checked by hand for l1); the mean over samples is
+    info['rates']; the list goes straight into Simulator.spread."""
+    torch.manual_seed(0)
+    net = CSNN()
+    x = (torch.rand(6, 5, 1, 28, 28) < torch.linspace(0.1, 0.5, 5).view(1, 5, 1, 1, 1)).float()
+    g, info = from_torch(net, x)
+    per = info["rates_per_input"]
+    assert len(per) == 5 and set(per[0]) == {"input", "l1", "l2", "l3"}
+    spk = []
+    with torch.no_grad():
+        net.l1.reset_hidden()
+        for t in range(6):
+            spk.append(net.l1(net.p1(net.c1(x[t]))))
+    by_b = torch.stack(spk).transpose(0, 1).flatten(1).double().mean(1)
+    assert [r["l1"] for r in per] == pytest.approx(by_b.tolist(), rel=1e-9)
+    for p in per[0]:
+        assert np.mean([r[p] for r in per]) == pytest.approx(info["rates"][p], rel=1e-9)
+    assert per[0]["input"] < per[-1]["input"]
+    sp = Simulator(g, chip="loihi2").spread(per, balance=False)
+    assert len(sp["energy_samples"]) == 5
+
+
+@pytest.mark.parametrize("mode", ["s", "m"])
+def test_spikingjelly_rates_per_input(mode):
+    """Single- and multi-step SpikingJelly (with a SeqToANNContainer-style flattened (T*B) layer in multi-step):
+    the same per-sample rates in both modes."""
+    pytest.importorskip("spikingjelly.activation_based")
+    from spikingjelly.activation_based import neuron, layer, functional
+    torch.manual_seed(0)
+    x = (torch.rand(4, 3, 1, 28, 28) < 0.3).float()
+    net = nn.Sequential(layer.Conv2d(1, 4, 5, step_mode=mode), neuron.LIFNode(step_mode=mode),
+                        layer.MaxPool2d(2, step_mode=mode), layer.Flatten(step_mode=mode),
+                        layer.Linear(4 * 12 * 12, 10, step_mode=mode), neuron.LIFNode(step_mode=mode))
+    for n_, p in net.named_parameters():
+        if "weight" in n_:
+            nn.init.uniform_(p, 0, 0.2)
+    g, info = from_torch(net, x, multi_step=mode == "m", reset=functional.reset_net)
+    per = info["rates_per_input"]
+    assert len(per) == 3 and {"1", "5"} <= set(per[0])
+    for p in per[0]:
+        assert np.mean([r[p] for r in per]) == pytest.approx(info["rates"][p], rel=1e-9)
+    ref = {}
+    hs = [net[i].register_forward_hook(lambda m, a, o, i=i: ref.setdefault(i, []).append(o)) for i in (1, 5)]
+    functional.reset_net(net)
+    with torch.no_grad():
+        net(x) if mode == "m" else [net(x[t]) for t in range(4)]
+    for h in hs:
+        h.remove()
+    for i in (1, 5):
+        o = torch.stack(ref[i]) if mode == "s" else ref[i][0]
+        assert [r[str(i)] for r in per] == pytest.approx(o.transpose(0, 1).flatten(1).double().mean(1).tolist(), rel=1e-9)

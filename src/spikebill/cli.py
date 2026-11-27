@@ -19,7 +19,7 @@ import sys
 from . import chip as chip_mod
 from . import graph as graph_mod
 from . import __version__
-from .api import Simulator
+from .api import Simulator, spread_block
 
 
 def load_model(path, weight_bits, steps):
@@ -252,8 +252,9 @@ def main(argv=None):
             raise ValueError(f"--map-rates must be 'mean' or a percentile, not {a.map_rates!r}")
         sp = sim.spread(load_rates_table(a.spread, g), steps=a.steps, execution=a.execution,
                         balance=not a.no_balance, objective=a.objective, workers=a.workers, map_rates=mr)
-        sp["map_label"] = "the mean rates" if mr == "mean" else f"the per-population p{mr:g} rates"
         print(spread_summary(sp))
+        if a.paper_block:
+            print(spread_block(sp, a.paper_block))
         if a.spread_html:
             print("wrote", spread_html(sp, a.spread_html))
         if a.spread_csv:
